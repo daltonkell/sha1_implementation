@@ -158,6 +158,7 @@ typedef uint8_t SHA1_BLOCK_t[64], *SHA1_BLOCK_p_t; /* 1-byte char */
 typedef struct SHA1_SHA1Object {
     SHA1_WORD_t digest[5];      /* digest is 5 WORDs */
     SHA1_BLOCK_t message_block; /* each block is 512 bits or 64 bytes */
+    SHA1_WORD_t temp_hash[5];   /* store the hash temporarily */
 } SHA1_SHA1Object_t, *SHA1_SHA1Object_p_t;
 
 /*
@@ -205,5 +206,30 @@ SHA1_WORD_t SHA1_circular_shift(int n, SHA1_WORD_t word);
  */
 SHA1_ERRCODE SHA1_pad_message(SHA1_SHA1Object_p_t sha1_p, uint8_t *msg, uint64_t msgLength);
 
+/*
+ * PROCESS BLOCK
+ * Compute the hash for a single 512-bit block. The resulting hash
+ * is stored in the SHA1Object->temp_hash.
+ *
+ * Parameters
+ *  sha1_p: pointer to SHA1Object_t
+ *
+ * Returns
+ *  SHA1_ERRCODE
+ */
+SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p);
+
+/*
+ * PROCESS MESSAGE
+ * Compute the hash for a variable-length message.
+ *
+ * Parameters
+ *  msg_p: pointer to message
+ *  sha1_p: pointer to SHA1Object_t
+ *
+ * Returns
+ *  SHA1_ERRCODE
+ */
+SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p);
 
 #endif /* _SHA1_H_ */
