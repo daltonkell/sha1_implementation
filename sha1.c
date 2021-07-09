@@ -12,36 +12,8 @@ SHA1_WORD_t SHA1_circular_shift(int n, SHA1_WORD_t word)
     return (word << n) | (word >> (32 - n));
 }
 
-SHA1_ERRCODE SHA1_pad_message(SHA1_SHA1Object_p_t sha1_p, uint8_t *msg, uint64_t msg_length)
-{
-
-    /*
-     * NOTE
-     * This function assumes that msg_length < 2^64
-     */
-
-    SHA1_ERRCODE err = 0;
-
-    uint8_t remaining_until_448 = 448 - msg_length;
-
-    /*
-     * Step 1
-     * Add a "1" to the end of the message_block
-     */
-
-    return err;
-}
-/*
-    H0 0x67452301
-    H1 0xEFCDAB89
-    H2 0x98BADCFE
-    H3 0x10325476
-    H4 0xC3D2E1F0
-*/
-
 /*
  * PROCESS BLOCK
- * TODO
  */
 SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
 {
@@ -60,13 +32,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
         0x8F1BBCDC,
         0xCA62C1D6
     };
-
-    printf("80-word sequence (first 20):\n");
-    for (size_t i=0; i<20; ++i)
-    {
-        printf("%08X ", word_80[i]);
-    }
-    printf("\n\n");
 
     /*
      * For the first 15-th elements of W, compute the bitwise OR of
@@ -89,13 +54,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
         );
     } 
 
-    printf("First 10 of W after initializing with message block:\n");
-    for (int i=0; i<10; ++i)
-    {
-        printf("%08X ", word_80[i]);
-    }
-    printf("\n\n");
-    //printf("bitwise operation, 16 -> 80:\n");
     /*
      * This step in the algorithm is really cool. We start off with
      * the first 15-th elements already initialized from the previous
@@ -111,7 +69,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
     for (t=16; t<80; ++t)
     {
         temp_word = SHA1_circular_shift(1, word_80[t-3] ^ word_80[t-8] ^ word_80[t-14] ^ word_80[t-16]);
-        //printf("t=%02i; CIRCSHIFT(1, W[t-3] ^ W[t-8] ^ W[t-14] ^ W[t-16] = %08X ^ %08X ^ %08X ^ %08X) = %08X\n", t, W[t-3], W[t-8], W[t-14], W[t-16], tmp);
         word_80[t] = temp_word;
     }
 
@@ -134,7 +91,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
      * and assign it to temp; set E to D, D to C, compute the circular
      * shift of B and assign it to C, set B to A, A to temp
      */
-    //printf("bitwise operation, 0 -> 20\n");
     for(t=0; t<20; t++)
     {
         temp_word = SHA1_circular_shift(5,A) +
@@ -147,7 +103,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
         A = temp_word;
     }
 
-    //printf("bitwise operation, 20 -> 40\n");
     for(t=20; t<40; t++)
     {
         temp_word = SHA1_circular_shift(5,A) + (B ^ C ^ D) + E + word_80[t] + constants_K[1];
@@ -158,7 +113,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
         A = temp_word;
     }
 
-    //printf("bitwise operation, 40 -> 60\n");
     for(t=40; t<60; t++)
     {
         temp_word = SHA1_circular_shift(5,A) +
@@ -170,7 +124,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
         A = temp_word;
     }
 
-    //printf("bitwise operation, 60 -> 80\n");
     for(t=60; t<80; t++)
     {
         temp_word = SHA1_circular_shift(5,A) + (B ^ C ^ D) + E + word_80[t] + constants_K[3];
@@ -180,13 +133,6 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
         B = A;
         A = temp_word;
     }
-
-    printf("printout of first 20 of word_80:\n");
-    for (int i=0; i<20; ++i)
-    {
-        printf("%08X ", word_80[i]);
-    }
-    printf("\n\n");
 
     /*
      * Assign the newly computed WORDs to the temporary hash array
@@ -216,25 +162,96 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
 }
 
 /*
+ * PAD AND PROCESS BLOCK
+ */
+SHA1_ERRCODE SHA1_pad_block(SHA1_SHA1Object_p_t sha1_p, int block_idx, const int msg_length)
+{
+
+    SHA1_ERRCODE err = 0;
+
+    if (block_idx > 55 && block_idx < 64)
+    {
+
+        printf("Padding block of size %02i with\"1\" and \"0s\"\n", (block_idx-1));
+
+        /*
+         * Add "1", then pad with "0" until block idx == 64
+         */
+
+        sha1_p->message_block[block_idx++] = 0x80; /* NOTE why is this "1" not 0x01? */
+        /* NOTE the inline increment */
+
+        while (block_idx < 64)
+        {
+            sha1_p->message_block[block_idx++] = 0x0;
+        }
+
+        /*
+         * Process block;
+         * Add second word of 0s and original length
+         */
+        err = SHA1_process_block(sha1_p);
+
+        /* recursive call to itself to add block of 0s and length; the
+         * below else-if branch should be hit at this point
+         */
+        block_idx = 0;
+        SHA1_pad_block(sha1_p, block_idx, msg_length);
+
+    }
+
+    else if (block_idx < 55)
+    {
+
+        int len = msg_length * 8; /* in bits, not bytes */
+        printf("Padding block of size %02i with \"0s\" and creating "
+                "fill block of \"0s\" and original length %010i\n",
+                (block_idx-1), len);
+
+        /*
+         * NOTE
+         * Does a 1 need to be appended here as well?
+         * Double check reference implementation(s).
+         */
+        while (block_idx < 56)
+        {
+            sha1_p->message_block[block_idx++] = 0x0;
+        }
+
+
+        /*
+         * Add original length of message
+         */
+        sha1_p->message_block[block_idx++] = len >> 24;
+        sha1_p->message_block[block_idx++] = len >> 16;
+        sha1_p->message_block[block_idx++] = len >> 8;
+        sha1_p->message_block[block_idx++] = len;
+
+        /* Now... zeros? The ref impl. looks like it's adding zeros */
+        sha1_p->message_block[block_idx++] = 0;
+        sha1_p->message_block[block_idx++] = 0;
+        sha1_p->message_block[block_idx++] = 0;
+        sha1_p->message_block[block_idx++] = 0;
+
+        if (block_idx != 64)
+        {
+            printf("ERROR block_idx == %i != 64 after adding length!\n", block_idx);
+            err = SHA1_GENERIC_ERROR;
+            return err;
+        }
+
+        /* compute intermediate hash */
+        err = SHA1_process_block(sha1_p);
+    }
+
+    return err;
+}
+
+/*
  * PROCESS MESSAGE
  */
 SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
 {
-
-    /*
-     * initialize counter variables
-     */
-    int msg_length = 0;        /* to store message length */
-    int block_idx  = 0;        /* store the block index posittion */
-    SHA1_ERRCODE ret_code = 0; /* store return codes */
-
-    //uint8_t *msg_p = NULL; /* pointer to message, probably will result from a read */
-
-    /*
-     * Calculate size of message string in bytes
-     */
-    msg_length = strlen(msg_p);
-    printf("INITIAL MESSAGE LENTGH: %08X\n", msg_length);
 
     /*
      * Process the message string in 512 bit blocks. For each block,
@@ -242,20 +259,40 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
      * string has ended can we produce the final result.
      */
 
+    /*
+     * initialize counter variables
+     */
+    const int msg_length = strlen(msg_p); /* to store original message length */
+    int mutable_msg_length = msg_length;     /* for counting */
+    int block_idx  = 0;                   /* store the block index posittion */
+    SHA1_ERRCODE ret_code = 0;            /* store return codes */
+
+    printf("INITIAL MESSAGE LENTGH: %08i\n", mutable_msg_length);
+
     /* While the message length is nonzero, we process each 512-bit
      * WORD and compute its hash. This hash is stored temporarily,
      * and will be used in the computations of subsequent computations.
      */
-    while (msg_length > 0)
+
+    /*
+     * Initialize intermediate hash buffer with constants
+     */
+    sha1_p->temp_hash[0] = 0x67452301;
+    sha1_p->temp_hash[1] = 0xEFCDAB89;
+    sha1_p->temp_hash[2] = 0x98BADCFE;
+    sha1_p->temp_hash[3] = 0x10325476;
+    sha1_p->temp_hash[4] = 0xC3D2E1F0;
+
+    while (mutable_msg_length > 0)
     {
 
-        while (msg_length > 0 && block_idx < 64)
+        while (mutable_msg_length > 0 && block_idx < 64)
         {
             /* Assign the value of msg_p[block_idx] to the
              * message block. Increment the index counter and message ptr
              */
             sha1_p->message_block[block_idx] = *(msg_p);
-            msg_length--;
+            mutable_msg_length--;
             block_idx++;
             msg_p++;
         }
@@ -280,14 +317,12 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
              * which processes the block.
              */
             ret_code = SHA1_process_block(sha1_p);
-            if (ret_code != SHA1_SUCCESS) { printf("BORKED\n"); exit(ret_code); }
-
+            if (ret_code != SHA1_SUCCESS) { printf("BORKED\n");  return ret_code; }
         }
 
-        else if (block_idx > 55 && block_idx < 64)
+        else if (block_idx <= 56)
         {
             /*
-             * TODO
              * We need to create two WORDs and compute the has for each.
              * The first word will have a "1" added to it (8-bit int), and
              * then padded with "0" until the block_idx == 64, at which point
@@ -296,20 +331,8 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
              * remaining 8 slots (8 bytes, 64 bits) will allow for a 64-bit
              * integer to denote the length of the original message.
              */
-            printf("Got to first else-if, STOP!\n");
-            return 0;
-        }
-
-        else if (block_idx < 56)
-        {
-            /*
-             * TODO
-             * This block is short enough where we can add the "separating 1"
-             * and potentially padding 0s along with our 64-bit int length. This
-             * will only comprise a single WORD.
-             */
-            printf("Got to second else-if, STOP!\n");
-             return 0;
+            ret_code = SHA1_pad_block(sha1_p, block_idx, msg_length);
+            if (ret_code != SHA1_SUCCESS) { printf("BORKED after padding\n");  return ret_code; }
         }
 
         /*
@@ -317,6 +340,16 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
          */
         block_idx = 0;
 
+        /*
+         * if the original message was 64 bytes (512 bits) long exactly,
+         * then we need to add a second WORD made of all 0s plus the
+         * original length at the end
+         */
+        if (msg_length == 64)
+        {
+            ret_code = SHA1_pad_block(sha1_p, block_idx, msg_length);
+            if (ret_code != SHA1_SUCCESS) { printf("BORKED after padding\n");  return ret_code; }
+        }
     }
 
     return ret_code;

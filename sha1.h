@@ -220,6 +220,25 @@ SHA1_ERRCODE SHA1_pad_message(SHA1_SHA1Object_p_t sha1_p, uint8_t *msg, uint64_t
 SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p);
 
 /*
+ * PAD BLOCK
+ * Pad the block for a given SHA1Object to 512 bits (64 bytes). If
+ * 55 < block_idx < 64, the block will be padded with a "1" then
+ * "0s" until the block_idx is 64. If block_idx < 55, a "1" will be added,
+ * followed by the required "0s" until the block_idx == 56. This leaves enough
+ * space for a 64-bit integer at the end, containing the length of the
+ * original message.
+*
+* Parameters
+*   sha1_p: pointer to SHA1 object
+*   block_idx: current block index (the next available spot)
+*   msg_length: length of original message
+*
+* Returns
+*   SHA1_ERRCODE int
+ */
+SHA1_ERRCODE SHA1_pad_block(SHA1_SHA1Object_p_t sha1_p, int block_idx, const int msg_length);
+
+/*
  * PROCESS MESSAGE
  * Compute the hash for a variable-length message.
  *
