@@ -156,9 +156,9 @@ typedef uint32_t SHA1_WORD_t, *SHA1_WORD_p_t;      /* 4-byte int */
 typedef uint8_t SHA1_BLOCK_t[64], *SHA1_BLOCK_p_t; /* 1-byte char */
 
 typedef struct SHA1_SHA1Object {
-    SHA1_WORD_t digest[5];      /* digest is 5 WORDs */
+    //SHA1_WORD_t digest[5];      /* digest is 5 WORDs */
     SHA1_BLOCK_t message_block; /* each block is 512 bits or 64 bytes */
-    SHA1_WORD_t temp_hash[5];   /* store the hash temporarily */
+    SHA1_WORD_t temp_hash[5];   /* store the 5-WORD hash temporarily */
 } SHA1_SHA1Object_t, *SHA1_SHA1Object_p_t;
 
 /*
@@ -169,12 +169,6 @@ typedef enum _sha1_errcode
     SHA1_SUCCESS = 0,
     SHA1_GENERIC_ERROR = 1
 } SHA1_ERRCODE;
-
-/*
- * macro defines how many words per block; this could
- * change if we decide to use a different type for WORD_t
-#define SHA1_BLOCK_MAX_WORD_SLOTS ( 512 / sizeof(SHA1_WORD_t) )
- */
 
 /*
  * Constants
