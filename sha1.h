@@ -156,8 +156,9 @@ typedef uint32_t SHA1_WORD_t, *SHA1_WORD_p_t;      /* 4-byte int */
 typedef uint8_t SHA1_BLOCK_t[64], *SHA1_BLOCK_p_t; /* 1-byte char */
 
 typedef struct SHA1_SHA1Object {
-    SHA1_WORD_t digest[5];      /* digest is 5 WORDs */
+    //SHA1_WORD_t digest[5];      /* digest is 5 WORDs */
     SHA1_BLOCK_t message_block; /* each block is 512 bits or 64 bytes */
+    SHA1_WORD_t temp_hash[5];   /* store the 5-WORD hash temporarily */
 } SHA1_SHA1Object_t, *SHA1_SHA1Object_p_t;
 
 /*
@@ -168,12 +169,6 @@ typedef enum _sha1_errcode
     SHA1_SUCCESS = 0,
     SHA1_GENERIC_ERROR = 1
 } SHA1_ERRCODE;
-
-/*
- * macro defines how many words per block; this could
- * change if we decide to use a different type for WORD_t
-#define SHA1_BLOCK_MAX_WORD_SLOTS ( 512 / sizeof(SHA1_WORD_t) )
- */
 
 /*
  * Constants
@@ -205,5 +200,49 @@ SHA1_WORD_t SHA1_circular_shift(int n, SHA1_WORD_t word);
  */
 SHA1_ERRCODE SHA1_pad_message(SHA1_SHA1Object_p_t sha1_p, uint8_t *msg, uint64_t msgLength);
 
+/*
+ * PROCESS BLOCK
+ * Compute the hash for a single 512-bit block. The resulting hash
+ * is stored in the SHA1Object->temp_hash.
+ *
+ * Parameters
+ *  sha1_p: pointer to SHA1Object_t
+ *
+ * Returns
+ *  SHA1_ERRCODE
+ */
+SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p);
+
+/*
+ * PAD BLOCK
+ * Pad the block for a given SHA1Object to 512 bits (64 bytes). If
+ * 55 < block_idx < 64, the block will be padded with a "1" then
+ * "0s" until the block_idx is 64. If block_idx < 55, a "1" will be added,
+ * followed by the required "0s" until the block_idx == 56. This leaves enough
+ * space for a 64-bit integer at the end, containing the length of the
+ * original message.
+*
+* Parameters
+*   sha1_p: pointer to SHA1 object
+*   block_idx: current block index (the next available spot)
+*   msg_length: length of original message
+*
+* Returns
+*   SHA1_ERRCODE int
+ */
+SHA1_ERRCODE SHA1_pad_block(SHA1_SHA1Object_p_t sha1_p, int block_idx, const int msg_length);
+
+/*
+ * PROCESS MESSAGE
+ * Compute the hash for a variable-length message.
+ *
+ * Parameters
+ *  msg_p: pointer to message
+ *  sha1_p: pointer to SHA1Object_t
+ *
+ * Returns
+ *  SHA1_ERRCODE
+ */
+SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p);
 
 #endif /* _SHA1_H_ */
