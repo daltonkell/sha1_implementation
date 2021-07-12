@@ -143,6 +143,7 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
     sha1_p->temp_hash[3] += D;
     sha1_p->temp_hash[4] += E;
 
+#ifdef DEBUG
     printf("printout of first 20 of sha1_p->message_block (should be same):\n");
     for (int i=0; i<20; ++i)
     {
@@ -157,6 +158,7 @@ SHA1_ERRCODE SHA1_process_block(SHA1_SHA1Object_p_t sha1_p)
         printf("%08X", sha1_p->temp_hash[i]);
     }
     printf("\n\n");
+#endif
 
     return err;
 }
@@ -172,7 +174,9 @@ SHA1_ERRCODE SHA1_pad_block(SHA1_SHA1Object_p_t sha1_p, int block_idx, const int
     if (block_idx > 55 && block_idx < 64)
     {
 
+#ifdef DEBUG
         printf("Padding block of size %02i with\"1\" and \"0s\"\n", (block_idx-1));
+#endif
 
         /*
          * Add "1", then pad with "0" until block idx == 64
@@ -204,9 +208,12 @@ SHA1_ERRCODE SHA1_pad_block(SHA1_SHA1Object_p_t sha1_p, int block_idx, const int
     {
 
         int len = msg_length * 8; /* in bits, not bytes */
+
+#ifdef DEBUG
         printf("Padding block of size %02i with \"0s\" and creating "
                 "fill block of \"0s\" and original length %010i\n",
                 (block_idx-1), len);
+#endif
 
         /*
          * NOTE
@@ -235,7 +242,11 @@ SHA1_ERRCODE SHA1_pad_block(SHA1_SHA1Object_p_t sha1_p, int block_idx, const int
 
         if (block_idx != 64)
         {
+
+#ifdef DEBUG
             printf("ERROR block_idx == %i != 64 after adding length!\n", block_idx);
+#endif
+
             err = SHA1_GENERIC_ERROR;
             return err;
         }
@@ -267,7 +278,9 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
     int block_idx  = 0;                   /* store the block index posittion */
     SHA1_ERRCODE ret_code = 0;            /* store return codes */
 
+#ifdef DEBUG
     printf("INITIAL MESSAGE LENTGH: %08i\n", mutable_msg_length);
+#endif
 
     /* While the message length is nonzero, we process each 512-bit
      * WORD and compute its hash. This hash is stored temporarily,
@@ -297,12 +310,14 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
             msg_p++;
         }
 
+#ifdef DEBUG
         printf("Message block (first 20):\n");
         for (int i=0; i<20; ++i)
         {
             printf("%08X ", sha1_p->message_block[i]);
         }
         printf("\n\n");
+#endif
 
         /*
          * The above while-loop has finished due to one of two conditions:
@@ -317,7 +332,11 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
              * which processes the block.
              */
             ret_code = SHA1_process_block(sha1_p);
-            if (ret_code != SHA1_SUCCESS) { printf("BORKED\n");  return ret_code; }
+            if (ret_code != SHA1_SUCCESS)
+            {
+                printf("BORKED after processing\n");
+                return ret_code;
+            }
         }
 
         else if (block_idx <= 56)
@@ -332,7 +351,11 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
              * integer to denote the length of the original message.
              */
             ret_code = SHA1_pad_block(sha1_p, block_idx, msg_length);
-            if (ret_code != SHA1_SUCCESS) { printf("BORKED after padding\n");  return ret_code; }
+            if (ret_code != SHA1_SUCCESS)
+            {
+                printf("BORKED after padding\n");
+                return ret_code;
+            }
         }
 
         /*
@@ -348,7 +371,11 @@ SHA1_ERRCODE SHA1_process_message(const char *msg_p, SHA1_SHA1Object_p_t sha1_p)
         if (msg_length == 64)
         {
             ret_code = SHA1_pad_block(sha1_p, block_idx, msg_length);
-            if (ret_code != SHA1_SUCCESS) { printf("BORKED after padding\n");  return ret_code; }
+            if (ret_code != SHA1_SUCCESS)
+            {
+                printf("BORKED after padding\n");
+                return ret_code;
+            }
         }
     }
 

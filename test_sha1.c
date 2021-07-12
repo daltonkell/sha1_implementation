@@ -6,6 +6,10 @@
 int main(const int argc, const char *argv[])
 {
 
+    #ifdef DEBUG
+    printf("DEBUG MODE!\n");
+    #endif
+
     /*
      * STEP 1
      * allocate a SHA1 object, initialize counter variables
@@ -34,7 +38,10 @@ int main(const int argc, const char *argv[])
         printf("File %s larger than 5MiB (%ld). Not allocating.\n", argv[1], fsize);
         return 1;
     }
+
+#ifdef DEBUG
     printf("File size: %ld\n", fsize);
+#endif
 
     /*
      * Return to beginning of file
@@ -63,6 +70,17 @@ int main(const int argc, const char *argv[])
      * Invoke hash algorithm
      */
     err = SHA1_process_message((const char *)msg_p, sha1_p);
+    if (err != SHA1_SUCCESS)
+    {
+        printf("ERROR CODE %i\n", err);
+    }
+
+    printf("Computed hash: ");
+    for (int i=0; i<5; i++)
+    {
+        printf("%08X", sha1_p->temp_hash[i]);
+    }
+    printf("\n");
 
     /*
      * free any dynamically allocated memory
